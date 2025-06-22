@@ -10,3 +10,4 @@ Small-ImageNet-Validation-Dataset-1000-Classes/
 
 # File segreti
 .env
+.idea/
