@@ -1,0 +1,12 @@
+# Ignora file temporanei Python
+__pycache__/
+*.pyc
+
+# Ambiente virtuale
+venv/
+
+# Dataset locale
+Small-ImageNet-Validation-Dataset-1000-Classes/
+
+# File segreti
+.env
