@@ -3,14 +3,46 @@ import requests
 import os
 import subprocess
 import time
+import base64
+from PIL import Image
+
+#Define the URL for the port
+URL_OLLAMA = "http://localhost:11434"
+#DEFINE string in input
+question = "Expand the image"
+
+def image_to_base64(image_path):
+    with open(image_path,"rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
+
+
+def choose_img(class_image, index):
+    path = f"./Small-ImageNet-Validation-Dataset-1000-Classes/ILSVRC2012_img_val_subset/{class_image}/"
+    files = sorted(os.listdir(path))
+    count=0
+    find=False
+    for f in files:
+        if count==index:
+            find=True
+            break
+        count=count+1
+
+    if find == False:
+        print("Error, no file is present with those class and index")
+        return None
+    else:
+        return path + f
+
+
 def download_dataset():
-    dataset_dir = "imagenet_validation_dataset"
+    dataset_dir = "./Small-ImageNet-Validation-Dataset-1000-Classes"
     if not os.path.exists(dataset_dir):
         print("📦 Clonazione del dataset da GitHub...")
         subprocess.run(["git", "clone", "https://github.com/ndb796/Small-ImageNet-Validation-Dataset-1000-Classes.git"])
     else:
         print("✅ Dataset già presente.")
 def chat_with_model( message_prompt, data_image, model_name):
+    setup_model(model_name)
     if(data_image == None):
         try:
             response = requests.post("http://localhost:11434/api/generate",
@@ -20,6 +52,15 @@ def chat_with_model( message_prompt, data_image, model_name):
 
         response_from_chat= response.json()
         return response_from_chat["response"]
+    else:
+        try:
+            response = requests.post("http://localhost:11434/api/generate",
+                                     json={"model": model_name, "prompt": message_prompt, "stream": False,"images": [data_image]})
+            #print(response.json())
+            response_from_chat=response.json()
+            return response_from_chat["response"]
+        except requests.exceptions.ConnectionError:
+            pass
 
 # To modify the model name that ends always with :latest
 def delete_last_part(string):
@@ -84,12 +125,19 @@ def stop_ollama():
 if __name__ == '__main__':
     download_dataset()
     start_ollama()
-    setup_model("mistral")
-    question= "Define the Happiness"
-    response=chat_with_model(question,None,"mistral")
-    print(f"Question: '{question}'")
-    print(f"Response: '{response}'")
-
+    img_path = choose_img(1,3)
+    if img_path== None:
+        print("Error")
+    else:
+        # Now we want to generate a expansion of an image.
+        img=Image.open(img_path).show()
+        img64=image_to_base64(img_path)
+        response= chat_with_model(question, img64 , "llava")
+        print(f"Question1: '{question}'")
+        print(f"Response1: '{response}'")
+        response = chat_with_model(question, img64, "moondream")
+        print(f"Question2: '{question}'")
+        print(f"Response2: '{response}'")
     stop_ollama()
 
 
