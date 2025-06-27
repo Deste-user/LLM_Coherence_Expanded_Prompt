@@ -7,7 +7,6 @@ venv/
 
 # Dataset locale
 Small-ImageNet-Validation-Dataset-1000-Classes/
-README.md
 
 # File segreti
 .env
