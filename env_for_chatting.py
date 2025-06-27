@@ -143,7 +143,6 @@ def make_all_conversation(models, img):
             #response = chat_with_model(question, img64, "erwan2/DeepSeek-Janus-Pro-7B")
             #print(f"Question2: '{question}'")
             #print(f"Response2: '{response}'")
-    Image.open(img_path).show()
     print(f"Question: '{question}'")
     print(f"Response: '{response}'")
     return response

@@ -43,6 +43,7 @@ if __name__ == '__main__':
     score_clip = {model: [0] * 10 for model in models}
 
     img={"class":img_class, "photo":img_num}
+    Image.open(efc.choose_img(img["class"],img["photo"])).show()
     for i in range(10):
         captions=efc.make_all_conversation(models,img)
 
