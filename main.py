@@ -10,20 +10,28 @@ NUM_IMG_4_CLASS = 5
 LEN = 10
 model_name = "openai/clip-vit-base-patch16"
 
-
-def compute_clip_score(image_path, text):
+def compute_clip_score(image_path, text, w=2.5):
     image = Image.open(image_path).convert("RGB")
-    inputs = clip_processor(text=[text], images=image, return_tensors="pt", padding=True, truncation=True,
-                            max_length=77)
-
+    inputs = clip_processor(
+        text=[text],
+        images=image,
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
+        max_length=77
+    )
     with torch.no_grad():
         outputs = clip_model(**inputs)
         image_emb = outputs.image_embeds[0]
         text_emb = outputs.text_embeds[0]
 
+    # Normalizzazione (cosine similarity)
     image_emb = image_emb / image_emb.norm()
     text_emb = text_emb / text_emb.norm()
-    score = torch.dot(image_emb, text_emb).item()
+    cosine_sim = torch.dot(image_emb, text_emb).item()
+
+    # Applica max(., 0) e peso w
+    score = w * max(cosine_sim, 0.0)
     return score
 
 
