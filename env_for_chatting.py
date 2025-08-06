@@ -1,6 +1,5 @@
 # we are using requests, that it has the same functionality of curl.
 import json
-
 import requests
 import os
 import subprocess
@@ -12,7 +11,55 @@ from io import BytesIO
 # Define the URL for the port
 URL_OLLAMA = "http://localhost:11434"
 # DEFINE string in input
-question = "Describe the phisical appearence of this word in a flowing paragraph, avoiding bullet points: "
+question =  "\n Please improve this prompt: "
+
+PREPARATED_PROMPT = "You are a helpful AI assistant designed to help the user produce prompts that will be used to generate images using Stable Diffusion." \
+" Help the user by modifying a given prompt adding many details so that the generated images will look better. " \
+"Generate only realistic prompts. Do not engage in artistic and unrealistic prompts."
+
+EXAMPLES = [
+    ('a portrait of a blonde woman', 'portrait of a pretty blonde woman, a flower crown, earthy makeup, flowing maxi dress with colorful patterns and fringe, a sunset or nature scene, green and gold color scheme'),
+
+    ('a portrait of an old man', 'photorealistic, visionary portrait of a dignified older man with weather-worn features, digitally enhanced, high contrast, chiaroscuro lighting technique, intimate, close-up, detailed, steady gaze, rendered in sepia tones, evoking rembrandt, timeless, expressive, highly detailed, sharp focus, high resolution'),
+
+    ('a realistic picture of a living room', 'a living room, bright modern Scandinavian style house, large windows, magazine photoshoot, 8k, studio lighting'),
+
+    ('a closeup of a goth woman', 'closeup portrait photo of beautiful goth woman, makeup, 8k uhd, high quality, dramatic, cinematic'),
+
+    ('a picture of a rabbit in a forest', 'close up photo of a rabbit, forest in spring, haze, halation, bloom, dramatic atmosphere, centred, rule of thirds, 200mm 1.4f macro shot'),
+
+    ('a photo of an indian girl', 'happy indian girl, portrait photography, beautiful, morning sunlight, smooth light, shot on kodak portra 200, film grain, nostalgic mood'),
+
+    ('a professional picture of a luxury bag', 'breathtaking shot of a bag, luxury product style, elegant, sophisticated, high-end, luxurious, professional, highly detailed'),
+
+    ('johnny depp, noir style', 'johnny depp photo portrait, film noir style, monochrome, high contrast, dramatic shadows, 1940s style, mysterious, cinematic'),
+
+    ('a cinematic shot of a cat in the snow', 'a cat under the snow with blue eyes, covered by snow, cinematic style, medium shot, professional photo, animal'),
+
+    ('tokyo, long exposure', 'long exposure photo of tokyo street, blurred motion, streaks of light, surreal, dreamy, ghosting effect, highly detailed'),
+
+    ('a photoshoot of a model, cyberpunk style ', 'a glamorous digital magazine photoshoot, a fashionable model wearing avant-garde clothing, set in a futuristic cyberpunk roof-top environment, with a neon-lit city background, intricate high fashion details, backlit by vibrant city glow, Vogue fashion photography'),
+
+    ('floral tea', 'freshly made hot floral tea in glass kettle on the table, angled shot, midday warm, Nikon D850 105mm, close-up'),
+
+    ('a picture of a smiling girl, red hair, upper body shot', 'masterpiece, best quality, girl, collarbone, wavy hair, looking at viewer, blurry foreground, upper body, necklace, contemporary, plain pants, intricate, print, pattern, ponytail, freckles, red hair, dappled sunlight, smile, happy'),
+]
+
+def format_examples(examples=EXAMPLES):
+    return "\n".join([f"Short: {short}\nLong: {long}\n" for short, long in examples])
+
+def build_message_prompt():
+    examples = format_examples()
+    return (
+        PREPARATED_PROMPT +
+        "\n\n---\n\n"
+        "Here are some examples:\n\n" +
+        examples +
+        "\n\n---\n\n"
+        "\n Please improve this prompt:\n" 
+        
+    )
+
 
 
 def image_to_base64(image_path):
@@ -61,7 +108,7 @@ def download_dataset():
         print("✅ Dataset già presente.")
 
 
-def chat_with_model(message_prompt, class_image, model_name):
+def chat_with_model(class_image, model_name, message_prompt):
     setup_model(model_name)
     input_string = message_prompt + class_image
     input_string = input_string.replace("_", " ")
@@ -153,6 +200,7 @@ def make_all_conversation(models, img):
     download_dataset()
     start_ollama()
     # img_path = choose_img(img["class"], img["photo"])
+    message_prompt = build_message_prompt()
     return_value = choose_class(img["class"], img["photo"])
     response = {model: {"response": "", "response_time": 0.0} for model in models}
     if return_value == None:
@@ -162,10 +210,10 @@ def make_all_conversation(models, img):
 
         img64 = image_to_base64(return_value["path"])
         for m in models:
-            resp, tm = chat_with_model(question, return_value["class name"], m)
+            resp, tm = chat_with_model(return_value["class name"], m, message_prompt)
             response[m]["response_time"] = tm
             response[m]["response"] = to_format_string(resp)
 
-    print(f"Question: '{question}'")
+    print(f"Question: '{message_prompt + return_value['class name']}'")
     print(f"Response: '{response}'")
     return response
