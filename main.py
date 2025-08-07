@@ -50,23 +50,35 @@ def avg_score(score_dict):
 
 if __name__ == '__main__':
     models = ["mistral", "phi3", "llama3.2"]
+    #take two random number that corresponds to a class and a photo
     img_class = rdm.randrange(NUM_CLASS)
     img_num = rdm.randrange(NUM_IMG_4_CLASS)
 
+    #
     clip_model = CLIPModel.from_pretrained(model_name)
     clip_processor = CLIPProcessor.from_pretrained(model_name)
+
+    #Initialize the envirionment for store clipscores and response times
     score_clip = {model: {"clipscores": [0] * LEN, "response_time": [0.0] * LEN} for model in models}
 
+    #In this structure we save the class and the photo number
     img = {"class": img_class, "photo": img_num}
-    Image.open(efc.choose_img(img["class"], img["photo"])).show()
+
+    #Save the path of the choosen image
+    choosen_img =efc.choose_img(img["class"], img["photo"])
+
+
+    #Visualize the choosen image
+    Image.open(choosen_img).show()
+
     for i in range(LEN):
         print(f"ITERATION N°: {i}")
         captions = efc.make_all_conversation(models, img)
-        score_clip["mistral"]["clipscores"][i] = compute_clip_score(efc.choose_img(img["class"], img["photo"]), captions["mistral"]["response"])
+        score_clip["mistral"]["clipscores"][i] = compute_clip_score(choosen_img), captions["mistral"]["response"])
         score_clip["mistral"]["response_time"][i] = captions["mistral"]["response_time"]
-        score_clip["phi3"]["clipscores"][i] = compute_clip_score(efc.choose_img(img["class"], img["photo"]), captions["phi3"]["response"])
+        score_clip["phi3"]["clipscores"][i] = compute_clip_score(choosen_img, captions["phi3"]["response"])
         score_clip["phi3"]["response_time"][i] = captions["phi3"]["response_time"]
-        score_clip["llama3.2"]["clipscores"][i] = compute_clip_score(efc.choose_img(img["class"], img["photo"]), captions["llama3.2"]["response"])
+        score_clip["llama3.2"]["clipscores"][i] = compute_clip_score(choosen_img, captions["llama3.2"]["response"])
         score_clip["llama3.2"]["response_time"][i] = captions["llama3.2"]["response_time"]
 
     average_scores = avg_score(score_clip)
