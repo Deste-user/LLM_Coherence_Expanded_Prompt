@@ -74,7 +74,7 @@ if __name__ == '__main__':
     for i in range(LEN):
         print(f"ITERATION N°: {i}")
         captions = efc.make_all_conversation(models, img)
-        score_clip["mistral"]["clipscores"][i] = compute_clip_score(choosen_img), captions["mistral"]["response"])
+        score_clip["mistral"]["clipscores"][i] = compute_clip_score(choosen_img, captions["mistral"]["response"])
         score_clip["mistral"]["response_time"][i] = captions["mistral"]["response_time"]
         score_clip["phi3"]["clipscores"][i] = compute_clip_score(choosen_img, captions["phi3"]["response"])
         score_clip["phi3"]["response_time"][i] = captions["phi3"]["response_time"]
