@@ -10,6 +10,7 @@ from io import BytesIO
 
 # Define the URL for the port
 URL_OLLAMA = "http://localhost:11434"
+
 # DEFINE string in input
 question =  "\n Please improve this prompt: "
 
@@ -45,9 +46,12 @@ EXAMPLES = [
     ('a picture of a smiling girl, red hair, upper body shot', 'masterpiece, best quality, girl, collarbone, wavy hair, looking at viewer, blurry foreground, upper body, necklace, contemporary, plain pants, intricate, print, pattern, ponytail, freckles, red hair, dappled sunlight, smile, happy'),
 ]
 
+# Function to format examples for the prompt
+# It returns a string with each example formatted
 def format_examples(examples=EXAMPLES):
-    return "\n".join([f"Short: {short}\nLong: {long}\n" for short, long in examples])
+    return "\n".join([f"Short: {short}\n Long: {long}\n" for short, long in examples])
 
+# Function to build the message prompt with examples
 def build_message_prompt():
     examples = format_examples()
     return (
@@ -61,17 +65,19 @@ def build_message_prompt():
     )
 
 
-
+# Open the image and convert it in base64 format
+# This is used to send the image to the model
 def image_to_base64(image_path):
     with Image.open(image_path) as img:
-        img = img.convert("RGB")  # assicurati RGB
+        img = img.convert("RGB")  
         buffered = BytesIO()
         img.save(buffered, format="JPEG")
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-
+#Choose the image based on the class and the photo number
 def choose_img(class_image, index):
     path = f"./Small-ImageNet-Validation-Dataset-1000-Classes/ILSVRC2012_img_val_subset/{class_image}/"
+    # Order the files in the directory
     files = sorted(os.listdir(path))
     count = 0
     find = False
@@ -98,16 +104,17 @@ def choose_class(class_image, index):
     obj = {"class name": map_class[class_image][1][1], "path": path_img}
     return obj
 
-
+#Function to Download the dataset if it not present
 def download_dataset():
     dataset_dir = "./Small-ImageNet-Validation-Dataset-1000-Classes"
     if not os.path.exists(dataset_dir):
-        print("📦 Clonazione del dataset da GitHub...")
+        print(" Clonation of the dataset from GitHub...")
         subprocess.run(["git", "clone", "https://github.com/ndb796/Small-ImageNet-Validation-Dataset-1000-Classes.git"])
     else:
-        print("✅ Dataset già presente.")
+        print("Dataset is already present.")
 
-
+# Function used to chat with the model
+# It sends a request to the model with the image and the message prompt
 def chat_with_model(class_image, model_name, message_prompt):
     setup_model(model_name)
     input_string = message_prompt + class_image
@@ -124,7 +131,7 @@ def chat_with_model(class_image, model_name, message_prompt):
         if "response" in response_from_chat:
             return response_from_chat["response"], t
         else:
-            raise KeyError(f"'response' non presente. Risposta ricevuta: {response_from_chat}")
+            raise KeyError(f"'response' not present. Received answer: {response_from_chat}")
     except requests.exceptions.ConnectionError:
         pass
 
@@ -138,24 +145,24 @@ def delete_last_part(string):
 def start_ollama():
     try:
         requests.get("http://localhost:11434")
-        print("Ollama è già in esecuzione.")
+        print("Ollama is already running.")
         return
     except requests.exceptions.ConnectionError:
         pass
 
-    print("Avvio Ollama in modalità 'serve'...")
+    print("Run Ollama in 'serve' mode...")
     subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     for _ in range(10):
         try:
             r = requests.get("http://localhost:11434")
             if r.status_code in [200, 404]:
-                print("Ollama serve è attivo.")
+                print("Ollama serve is active.")
                 return
         except requests.exceptions.ConnectionError:
             time.sleep(1)
 
-    raise RuntimeError("Ollama non si è avviato.")
+    raise RuntimeError("Ollama is not running.")
 
 
 # With this funct we pull some models, choosing the name of LLM
@@ -164,26 +171,27 @@ def setup_model(model_name):
     response = requests.get("http://localhost:11434/api/tags")
     installed_models = []
     for m in response.json().get("models", []):
+        # We delete the last part of the model name to append the model name without the version
         installed_models.append(delete_last_part(m["name"]))
     checked = False
     for m in installed_models:
         if (m == model_name):
             checked = True
-            print("Modello già presente")
+            print("Model is already present")
             break
     if checked == False:
-        print("Modello non presente")
+        print("Model is not already present, we pull it...")
         pull_response = requests.post("http://localhost:11434/api/pull", json={"name": model_name}, stream=True)
 
         if pull_response.status_code != 200:
             raise RuntimeError(
-                f"Pull fallito per il modello '{model_name}'. Codice Errore: '{pull_response.status_code}'")
+                f"Failed Pull  for the model '{model_name}'. Error Code: '{pull_response.status_code}'")
         else:
             for line in pull_response.iter_lines():
                 if line:
                     print(line.decode('utf-8'))
 
-            print(f" Modello '{model_name}' installato con successo.")
+            print(f" Model '{model_name}' is successfully installated.")
 
 
 # This function is used to setup a chat and use it.
@@ -195,21 +203,32 @@ def to_format_string(string):
         string = string.replace(c, " ")
     return string
 
-
+# Function to make a conversation based on a image with a list of models
+# It returns a dictionary with the response and the response time for each model
 def make_all_conversation(models, img):
+    
+    # Download the dataset if it not present
     download_dataset()
+
+    # Start the ollama server
     start_ollama()
-    # img_path = choose_img(img["class"], img["photo"])
+    
+    # Prepare the message prompt)
     message_prompt = build_message_prompt()
+
+    # Choose the class and the photo number, Return a dictinonary with the class name and the path of the image
     return_value = choose_class(img["class"], img["photo"])
+
+    #Initialize the response dictionary
     response = {model: {"response": "", "response_time": 0.0} for model in models}
+    # If the return value is None, it means that there was an error in choosing the class and the photo
     if return_value == None:
-        print("Error")
+        print("Error, there is no image with that class and index.")
     else:
         # Now we want to generate a expansion of an image.
-
         img64 = image_to_base64(return_value["path"])
         for m in models:
+            #Store the response and the time of response for each model
             resp, tm = chat_with_model(return_value["class name"], m, message_prompt)
             response[m]["response_time"] = tm
             response[m]["response"] = to_format_string(resp)

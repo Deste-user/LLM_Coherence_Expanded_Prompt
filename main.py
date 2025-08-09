@@ -10,6 +10,8 @@ NUM_IMG_4_CLASS = 5
 LEN = 10
 model_name = "openai/clip-vit-base-patch16"
 
+# Function to compute CLIP score for an image and text
+# The score is calculated as w * max(cosine_similarity, 0)
 def compute_clip_score(image_path, text, w=2.5):
     image = Image.open(image_path).convert("RGB")
     inputs = clip_processor(
@@ -25,16 +27,16 @@ def compute_clip_score(image_path, text, w=2.5):
         image_emb = outputs.image_embeds[0]
         text_emb = outputs.text_embeds[0]
 
-    # Normalizzazione (cosine similarity)
+    # Normalization (cosine similarity)
     image_emb = image_emb / image_emb.norm()
     text_emb = text_emb / text_emb.norm()
     cosine_sim = torch.dot(image_emb, text_emb).item()
 
-    # Applica max(., 0) e peso w
+    # Apply max(., 0) e weights w
     score = w * max(cosine_sim, 0.0)
     return score
 
-
+# Function to calculate average scores and response times for each model
 def avg_score(score_dict):
     avg_scores = {}
     for model, values in score_dict.items():
@@ -54,7 +56,7 @@ if __name__ == '__main__':
     img_class = rdm.randrange(NUM_CLASS)
     img_num = rdm.randrange(NUM_IMG_4_CLASS)
 
-    #
+    # Load the CLIP model and processor
     clip_model = CLIPModel.from_pretrained(model_name)
     clip_processor = CLIPProcessor.from_pretrained(model_name)
 
@@ -71,6 +73,7 @@ if __name__ == '__main__':
     #Visualize the choosen image
     Image.open(choosen_img).show()
 
+    #Calculate CLIP scores and response times for each model
     for i in range(LEN):
         print(f"ITERATION N°: {i}")
         captions = efc.make_all_conversation(models, img)
@@ -81,7 +84,10 @@ if __name__ == '__main__':
         score_clip["llama3.2"]["clipscores"][i] = compute_clip_score(choosen_img, captions["llama3.2"]["response"])
         score_clip["llama3.2"]["response_time"][i] = captions["llama3.2"]["response_time"]
 
+    # Calculate average scores and response times
     average_scores = avg_score(score_clip)
+
+    # Print the average scores and response times for each model
     print(f"[mistral] CLIP-S: {average_scores['mistral']['avg_clipscore']:.3f}")
     print(f"[mistral] Average Time to Respond: {average_scores['mistral']['avg_time']:.3f} seconds")
     print(f"[phi3] CLIP-S: {average_scores['phi3']['avg_clipscore']:.3f}")
