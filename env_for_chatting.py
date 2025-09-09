@@ -57,11 +57,20 @@ def build_message_prompt():
     return (
         PREPARATED_PROMPT +
         "\n\n---\n\n"
-        "Here are some examples:\n\n" +
+        "Here are some EXAMPLES (for reference only, DO NOT copy them in the answer):\n\n" +
         examples +
-        "\n\n---\n\n"
-        "\n Please improve this prompt:\n" 
-        
+         "\n\n---\n\n"
+        "TASK:\n"
+        "You must improve the given prompt.\n\n"
+        "STRICT OUTPUT RULES:\n"
+        "1. Do NOT include reasoning, explanations, meta-comments, or thought processes.\n"
+        "2. Do NOT repeat the examples above.\n"
+        "3. Your answer MUST follow EXACTLY this format:\n"
+        "   Short: <short improved version>\n"
+        "   Long: <long detailed version>\n"
+        "4. Provide exactly ONE Short and ONE Long.\n"
+        "5. Do not add any text before or after these two lines.\n"
+        "\nPrompt to improve:\n"
     )
 
 
@@ -130,8 +139,11 @@ def chat_with_model(class_image, model_name, message_prompt):
         # Verifica chiave 'response'
         if "response" in response_from_chat:
             return response_from_chat["response"], t
+        elif "error" in response_from_chat:
+            print(f"Error from model {model_name}: {response_from_chat['error']}")
+            return "", t
         else:
-            raise KeyError(f"'response' not present. Received answer: {response_from_chat}")
+            raise KeyError(f"Unexpected response: {response_from_chat}")
     except requests.exceptions.ConnectionError:
         pass
 
@@ -172,7 +184,7 @@ def setup_model(model_name):
     installed_models = []
     for m in response.json().get("models", []):
         # We delete the last part of the model name to append the model name without the version
-        installed_models.append(delete_last_part(m["name"]))
+        installed_models.append(m["name"])
     checked = False
     for m in installed_models:
         if (m == model_name):
