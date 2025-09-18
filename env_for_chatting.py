@@ -52,6 +52,7 @@ def format_examples(examples=EXAMPLES):
     return "\n".join([f"Short: {short}\n Long: {long}\n" for short, long in examples])
 
 # Function to build the message prompt with examples
+#TODO: Probably the prompt is too long and it superate the max token limit of the model.
 def build_message_prompt():
     examples = format_examples()
     return (

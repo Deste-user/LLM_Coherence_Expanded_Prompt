@@ -1,40 +1,63 @@
 from PIL import Image
-
 import env_for_chatting as efc
 import random as rdm
 import re
 import torch
-from transformers import CLIPProcessor, CLIPModel
+from transformers import CLIPProcessor, CLIPModel, CLIPTokenizer
 
 NUM_CLASS = 1000
 NUM_IMG_4_CLASS = 5
 LEN = 10  
 model_name = "openai/clip-vit-base-patch16"
+device = None # Initialize device variable
+img_emb = None
+
+
 
 # Function to compute CLIP score for an image and text
 # The score is calculated as w * max(cosine_similarity, 0)
 # if clamp_zero is False, the score is w * cosine_similarity
 # This because if is True the average CLIP score is higher because negative scores are clamped to zero.
+# We can use models with memory 
+# And give to eat those examples for model.
+
 def compute_clip_score(image_path, text, w=2.5,clamp_zero=False):
+    global img_emb
     image = Image.open(image_path).convert("RGB")
-    inputs = clip_processor(
-        text=[text],
-        images=image,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=77
-    )
+
+    # To count the number of tokens in the text (output of the model)
+    tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-base-patch16")
+    tokens = tokenizer(text, return_tensors="pt", padding=True)
+    num_tokens = tokens["input_ids"].shape[1]
+    print(f"Number of tokens: {num_tokens}")
+    # If the image embedding is not computed yet, compute it
+    if img_emb is None:
+        tokenizer.use_fast = False
+        image_inputs = clip_processor(images=image, return_tensors="pt")
+        image_inputs = {k: v.to(device) for k, v in image_inputs.items()}
+        with torch.no_grad():
+            img_emb = clip_model.get_image_features(**image_inputs)
+            tokenizer.use_fast = True   
+
+
+    # Preprocess the image and text
+    text_inputs = clip_processor(text=[text], return_tensors="pt", padding=True, truncation=True, max_length=77)
+    text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
     with torch.no_grad():
-        outputs = clip_model(**inputs)
-        image_emb = outputs.image_embeds[0]
-        text_emb = outputs.text_embeds[0]
+        text_emb = clip_model.get_text_features(**text_inputs)
 
-    # Normalization (cosine similarity)
-    image_emb = image_emb / image_emb.norm()
+
+    img_emb = img_emb.squeeze(0)   # diventa [D]
+    text_emb = text_emb.squeeze(0) 
+
+
+    # Normalize embeddings
+    img_emb = img_emb / img_emb.norm()
     text_emb = text_emb / text_emb.norm()
-    cosine_sim = torch.dot(image_emb, text_emb).item()
 
+    # Cosine similarity
+    cosine_sim = torch.dot(img_emb, text_emb).item()
+        
     if clamp_zero:
         # Apply max(., 0) e weights w
         score = w * max(cosine_sim, 0.0)
@@ -65,9 +88,18 @@ def extract_short_long(response_text):
 if __name__ == '__main__':
     models = ["mistral:latest", "phi3:latest", "llama3.2:latest", "gemma2:latest","deepseek-r1:14b"]
 
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("I'm using:", device)
+
+
     # Load the CLIP model and processor
     clip_model = CLIPModel.from_pretrained(model_name)
-    clip_processor = CLIPProcessor.from_pretrained(model_name)
+
+    #if I use use_fast=True i can't put image to make the embeedings 
+    clip_processor = CLIPProcessor.from_pretrained(model_name, use_fast=False)
+
+    clip_model.to(device)
 
     #Initialize the envirionment for store clipscores and response times
     score_clip = {model: {"clipscores": [0] * LEN, "response_time": [0.0] * LEN} for model in models}
@@ -100,7 +132,6 @@ if __name__ == '__main__':
         short =extract_short_long(captions["deepseek-r1:14b"]["response"])
         string = f"Short: {short}"
         print(string)
-
         score_clip["deepseek-r1:14b"]["clipscores"][i] = compute_clip_score(choosen_img, string)
         score_clip["deepseek-r1:14b"]["response_time"][i] = captions["deepseek-r1:14b"]["response_time"]
 
