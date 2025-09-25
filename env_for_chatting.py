@@ -2,7 +2,7 @@
 import json
 import requests
 import os
-import subprocess
+import re
 import time
 import base64
 from PIL import Image
@@ -104,7 +104,7 @@ def choose_img(class_image, index):
         return path + f
 
 
-def choose_class(class_image, index):
+def choose_class_and_img(class_image, index):
     with open('./Small-ImageNet-Validation-Dataset-1000-Classes/imagenet_class_index.json', 'r',
               encoding='utf-8') as file:
         map_class = json.load(file)
@@ -114,14 +114,14 @@ def choose_class(class_image, index):
     obj = {"class name": map_class[class_image][1][1], "path": path_img}
     return obj
 
-#Function to Download the dataset if it not present
-def download_dataset():
-    dataset_dir = "./Small-ImageNet-Validation-Dataset-1000-Classes"
-    if not os.path.exists(dataset_dir):
-        print(" Clonation of the dataset from GitHub...")
-        subprocess.run(["git", "clone", "https://github.com/ndb796/Small-ImageNet-Validation-Dataset-1000-Classes.git"])
-    else:
-        print("Dataset is already present.")
+# #Function to Download the dataset if it not present
+# def download_dataset():
+#     dataset_dir = "./Small-ImageNet-Validation-Dataset-1000-Classes"
+#     if not os.path.exists(dataset_dir):
+#         print(" Clonation of the dataset from GitHub...")
+#         subprocess.run(["git", "clone", "https://github.com/ndb796/Small-ImageNet-Validation-Dataset-1000-Classes.git"])
+#     else:
+#         print("Dataset is already present.")
 
 # Function used to chat with the model
 # It sends a request to the model with the image and the message prompt
@@ -154,28 +154,28 @@ def delete_last_part(string):
     return string.split(":")[0]
 
 
-# To initialize the ollama sw in a determinated port (11434)
-def start_ollama():
-    try:
-        requests.get("http://localhost:11434")
-        print("Ollama is already running.")
-        return
-    except requests.exceptions.ConnectionError:
-        pass
+# # To initialize the ollama sw in a determinated port (11434)
+# def start_ollama():
+#     try:
+#         requests.get("http://localhost:11434")
+#         print("Ollama is already running.")
+#         return
+#     except requests.exceptions.ConnectionError:
+#         pass
 
-    print("Run Ollama in 'serve' mode...")
-    subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+#     print("Run Ollama in 'serve' mode...")
+#     subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    for _ in range(10):
-        try:
-            r = requests.get("http://localhost:11434")
-            if r.status_code in [200, 404]:
-                print("Ollama serve is active.")
-                return
-        except requests.exceptions.ConnectionError:
-            time.sleep(1)
+#     for _ in range(10):
+#         try:
+#             r = requests.get("http://localhost:11434")
+#             if r.status_code in [200, 404]:
+#                 print("Ollama serve is active.")
+#                 return
+#         except requests.exceptions.ConnectionError:
+#             time.sleep(1)
 
-    raise RuntimeError("Ollama is not running.")
+#     raise RuntimeError("Ollama is not running.")
 
 
 # With this funct we pull some models, choosing the name of LLM
@@ -220,17 +220,17 @@ def to_format_string(string):
 # It returns a dictionary with the response and the response time for each model
 def make_all_conversation(models, img):
     
-    # Download the dataset if it not present
-    download_dataset()
+    # # Download the dataset if it not present
+    # download_dataset()
 
-    # Start the ollama server
-    start_ollama()
+    # # Start the ollama server
+    # start_ollama()
     
     # Prepare the message prompt)
     message_prompt = build_message_prompt()
 
     # Choose the class and the photo number, Return a dictinonary with the class name and the path of the image
-    return_value = choose_class(img["class"], img["photo"])
+    return_value = choose_class_and_img(img["class"], img["photo"])
 
     #Initialize the response dictionary
     response = {model: {"response": "", "response_time": 0.0} for model in models}
@@ -239,7 +239,7 @@ def make_all_conversation(models, img):
         print("Error, there is no image with that class and index.")
     else:
         # Now we want to generate a expansion of an image.
-        img64 = image_to_base64(return_value["path"])
+        # img64 = image_to_base64(return_value["path"])
         for m in models:
             #Store the response and the time of response for each model
             resp, tm = chat_with_model(return_value["class name"], m, message_prompt)
@@ -249,3 +249,8 @@ def make_all_conversation(models, img):
     print(f"Question: '{message_prompt + return_value['class name']}'")
     print(f"Response: '{response}'")
     return response
+
+def extract_short_long(response_text):
+    short_match = re.search(r"Short:\s*(.*)", response_text)
+    short = short_match.group(1).strip() if short_match else ""
+    return short

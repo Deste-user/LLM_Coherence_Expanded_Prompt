@@ -1,0 +1,141 @@
+import os
+from PIL import Image
+from transformers import CLIPTokenizer
+import torch
+import numpy as np
+
+import env_for_chatting as efc
+
+#Create a file than calculates embeddings of images for all classes.
+def create_all_img_embedding(clip_processor, clip_model,device,num_classes, num_img_4_class, name_model):
+    tokenizer = CLIPTokenizer.from_pretrained(name_model)
+    tokenizer.use_fast = False
+
+
+    if os.path.exists('./images_embedding') == False:
+        os.mkdir('./images_embedding')
+        for i in range(num_classes):
+            class_embeddings =[]
+            for j in range(num_img_4_class):
+                img = efc.choose_class_and_img(i,j)
+                image_path = img['path']
+                image = Image.open(image_path).convert("RGB")
+                image_inputs = clip_processor(images=image, return_tensors="pt")
+                image_inputs = {k: v.to(device) for k, v in image_inputs.items()}
+                with torch.no_grad():
+                    img_emb = clip_model.get_image_features(**image_inputs)
+                    tokenizer.use_fast = True   
+
+                #I use squeeze to reduce the dimensionality of the tensor, then i save tensor copy in the CPU.
+                #Compatibility with pcs without a GPU
+                img_emb= img_emb.squeeze(0).cpu()
+                class_embeddings.append(img_emb)
+
+            # Stack the 5 embeddings in one tensor [5, D]
+            class_embeddings = torch.stack(class_embeddings)
+
+            # Save the tensor in a file .pt in a directory for the class
+            class_dir = f'./images_embedding/class_{i}'
+            if not efc.os.path.exists(class_dir):
+                efc.os.mkdir(class_dir)
+
+            save_path = f'{class_dir}/embeddings.pt'
+            torch.save(class_embeddings, save_path)
+
+            print(f"Saved embeddings for class {i} at {save_path}")
+    else:
+        print('The Embedding Directory is already create, also the embedding of all image of Dataset.')     
+
+
+#--------------------------------------------------------------------------------------------------------------
+
+
+# Function to calculate embeddings of a single class -> put the prompt in the models.
+# So if the class number is 1000 and we have 5 models we have to do 5000 prompt embeddings.        
+
+def create_prompt_embedding_for_all(clip_processor, clip_model,model_name ,models,class_num, device):
+    struct_of_text_embeddings = [
+    [None for _ in range(len(models))] 
+    for _ in range(class_num)]  # class_num x num_models
+
+    tokenizer = CLIPTokenizer.from_pretrained(model_name)
+    tokenizer.use_fast = True 
+    message_prompt = efc.build_message_prompt()
+
+    for i in range(len(models)):
+            for j in range(class_num):
+                img=efc.choose_class_and_img(j,1)
+                #This is the prompt extension of the class
+                print(img['class name'])
+                caption, t=efc.chat_with_model(img['class name'], models[i], message_prompt)
+                if models[i] == "deepseek-r1:14b":
+                    caption = efc.extract_short_long(caption)   
+                text_inputs = clip_processor(text=[caption], return_tensors="pt", padding=True, truncation=True, max_length=77)
+                text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
+                with torch.no_grad():
+                    text_emb = clip_model.get_text_features(**text_inputs)                    
+                text_emb = text_emb.squeeze(0).cpu()
+                struct_of_text_embeddings[j][i] = text_emb
+                print(f"Saved embedding for class {j} and model {models[i]}")
+    return struct_of_text_embeddings
+
+
+#-----------------------------------------------------------------------------------------------------------------------
+
+# Embedding text is one vector of one class
+# Models is the list of models
+# Embeddings image is the tensor of all embeddings of images of one class [5,D]
+def calculate_clip_score(embedding_text, models, embeddings_image ):
+    average_clip_scores = [
+    {
+        "model":j ,
+        "scores": [],
+        "avg_score": 0.0,    # la media
+        "deviation": 0.0  # la deviazione standard
+    }
+    for j in range(len(models))]
+
+    for emb_img in embeddings_image:
+        for i in range(len(models)):
+            score = clip_score(emb_img, embedding_text[i])
+            average_clip_scores[i]["scores"].append(score)
+
+    # Calculate average scores
+    for entry in average_clip_scores:
+        if entry["scores"]:
+            entry["avg_score"] = sum(entry["scores"]) / len(entry["scores"])
+            entry["deviation"] = np.std(entry["scores"])
+        else:
+            entry["avg_score"] = 0.0
+
+    return average_clip_scores                
+
+
+
+
+def clip_score(emb_img, emb_text, w=2.5):
+    # Normalize embeddings
+    img_emb = emb_img / emb_img.norm()
+    text_emb = emb_text / emb_text.norm()
+
+    # Cosine similarity
+    cosine_sim = torch.dot(img_emb, text_emb).item()
+
+    score = w * max(cosine_sim, 0.0)
+    return score
+
+
+# calculate clip scores for all classes 
+def analyze(models, num_classes, embeddings_prompt):
+    avg_clip_scores = []
+
+    for i in range(num_classes):
+        # Load image embeddings for class i
+        embeddings_path = f'./images_embedding/class_{i}/embeddings.pt'
+        embeddings_image = torch.load(embeddings_path)
+        avg_clip_scores.append(calculate_clip_score(embeddings_prompt[i], models, embeddings_image))
+        print(f"Class {i} - Average CLIP Scores: {avg_clip_scores[i]}")
+
+    return avg_clip_scores
+
+
