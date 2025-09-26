@@ -122,8 +122,8 @@ def start_ollama():
 
 
 if __name__ == '__main__':
-    models = ["mistral:latest", "phi3:latest", "llama3.2:latest"]
-    #models = ["mistral:latest"] , "gemma2:latest","deepseek-r1:14b"
+    models = ["mistral:latest", "phi3:latest","llama3.2:latest","gemma2:latest"]
+    #models = ["mistral:latest"] , "gemma2:latest","deepseek-r1:14b, , "llama3.2:latest""
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("I'm using:", device)
@@ -146,8 +146,7 @@ if __name__ == '__main__':
 
 
     avg_clipscores=a.analyze(models, NUM_CLASS, embeddings_prompt)
-    #TODO: understand how to represent class with minor clipscore (threshold? - represent all in a file?)
-    #TODO: represent the standard deviation of clip scores for each class
+
     #TODO: try to parallelize the code (facoltative)
     ga.create_clipscore_table(avg_clipscores ,models, NUM_CLASS)
 

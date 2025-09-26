@@ -127,7 +127,7 @@ def create_clipscore_table(avg_clip_scores, models, num_classes):
         c1.border = thin_border
         c1.alignment = Alignment(horizontal='center')
         
-        c2=ws.cell(row=2, column=col_start+1, value="dev std")
+        c2=ws.cell(row=2, column=col_start+1, value="dev std (±)")
         c2.font = Font(bold=True)
         c2.border = thin_border
         c2.alignment = Alignment(horizontal='center')
@@ -147,6 +147,13 @@ def create_clipscore_table(avg_clip_scores, models, num_classes):
         for class_idx in range(num_classes):
             sum_all_avg += avg_clip_scores[class_idx][models.index(model)]["avg_score"]
     avg_threshold = sum_all_avg / (num_classes * len(models))        
+
+    # sum_all_avg = [0.0]*len(models)
+    # for model in models:
+    #     sum = 0.0
+    #     for class_idx in range(num_classes):
+    #         sum += avg_clip_scores[class_idx][models.index(model)]["avg_score"]
+    #     sum_all_avg[models.index(model)]= sum / (num_classes)
     
     # Fill in data
 
@@ -170,6 +177,7 @@ def create_clipscore_table(avg_clip_scores, models, num_classes):
     green_fill = PatternFill(start_color="99FF99", end_color="99FF99", fill_type="solid")
 
 
+    #Average threshold for all models and classes
     for row in range(3, num_classes+3):
         col=2
         for model in models:
@@ -185,6 +193,48 @@ def create_clipscore_table(avg_clip_scores, models, num_classes):
 
     wb.save("ClipScores.xlsx")
 
+    num_red_for_model = [0]*len(models) 
+    # Stamp for all models how many class are under the avg threshold
+    for model in models:
+        for class_idx in range(num_classes):
+            if avg_clip_scores[class_idx][models.index(model)]["avg_score"] < avg_threshold:
+                num_red_for_model[models.index(model)] += 1
+
+
+    # #Threshold for each model
+    # for row in range(3, num_classes+3):
+    #     col=2
+    #     for model in models:
+    #         ws.conditional_formatting.add(
+    #             f"{ws.cell(row=row, column=col).coordinate}",
+    #             CellIsRule(operator="lessThan", formula=[str(sum_all_avg[models.index(model)])], fill=red_fill)
+    #         )
+    #         ws.conditional_formatting.add(
+    #             f"{ws.cell(row=row, column=col).coordinate}",
+    #             CellIsRule(operator="greaterThanOrEqual", formula=[str(sum_all_avg[models.index(model)])], fill=green_fill)
+    #         )
+    #         col += 2
+
+    # wb.save("ClipScores.xlsx")
+
+    # num_red_for_model = [0]*len(models) 
+    # # Stamp for all models how many class are under the avg threshold
+    # for model in models:
+    #     for class_idx in range(num_classes):
+    #         if avg_clip_scores[class_idx][models.index(model)]["avg_score"] < sum_all_avg[models.index(model)]:
+    #             num_red_for_model[models.index(model)] += 1
+
+
+    # Draw istogram
+    plt.figure(figsize=(8,5))
+    plt.bar(models, num_red_for_model, color='red')
+    plt.xlabel('Models')
+    plt.ylabel('Number of Classes below Threshold')
+    plt.title('Classes with avg CLIP Score below Overall Threshold per Model')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig("classes_below_threshold.png")
+        
 
 
 
