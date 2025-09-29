@@ -126,7 +126,7 @@ def choose_class_and_img(class_image, index):
 # Function used to chat with the model
 # It sends a request to the model with the image and the message prompt
 def chat_with_model(class_image, model_name, message_prompt):
-    setup_model(model_name)
+    # setup_model(model_name)
     input_string = message_prompt + class_image
     input_string = input_string.replace("_", " ")
 
@@ -180,7 +180,7 @@ def delete_last_part(string):
 
 # With this funct we pull some models, choosing the name of LLM
 def setup_model(model_name):
-    print(f"Check if  '{model_name}' is already present")
+    #print(f"Check if  '{model_name}' is already present")
     response = requests.get("http://localhost:11434/api/tags")
     installed_models = []
     for m in response.json().get("models", []):
@@ -190,7 +190,7 @@ def setup_model(model_name):
     for m in installed_models:
         if (m == model_name):
             checked = True
-            print("Model is already present")
+            #print("Model is already present")
             break
     if checked == False:
         print("Model is not already present, we pull it...")

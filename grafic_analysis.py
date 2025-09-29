@@ -116,7 +116,7 @@ def create_clipscore_table(avg_clip_scores, models, num_classes):
         cell.border = thin_border
         col_start += 2 
 
-    class_cell=ws.cell(row=1, column=1, value="Class").font = Font(bold=True)
+    class_cell=ws.cell(row=2, column=1, value="Class").font = Font(bold=True)
     class_cell.border = thin_border
     class_cell.alignment = Alignment(horizontal='center')
 
@@ -239,5 +239,13 @@ def create_clipscore_table(avg_clip_scores, models, num_classes):
 
 
                
-
+def grafic_avg_time(models,avg_time):
+    plt.figure(figsize=(8,5))
+    plt.bar(models, avg_time, color='blue')
+    plt.xlabel('Models')
+    plt.ylabel('Average Response Time (s)')
+    plt.title('Average Response Time per Model')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig("avg_response_time.png")
     

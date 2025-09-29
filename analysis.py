@@ -3,6 +3,9 @@ from PIL import Image
 from transformers import CLIPTokenizer
 import torch
 import numpy as np
+import time
+from tqdm import tqdm
+
 
 import env_for_chatting as efc
 
@@ -14,7 +17,7 @@ def create_all_img_embedding(clip_processor, clip_model,device,num_classes, num_
 
     if os.path.exists('./images_embedding') == False:
         os.mkdir('./images_embedding')
-        for i in range(num_classes):
+        for i in tqdm(range(num_classes),desc="Calculating embeddings of all images"):
             class_embeddings =[]
             for j in range(num_img_4_class):
                 img = efc.choose_class_and_img(i,j)
@@ -24,8 +27,6 @@ def create_all_img_embedding(clip_processor, clip_model,device,num_classes, num_
                 image_inputs = {k: v.to(device) for k, v in image_inputs.items()}
                 with torch.no_grad():
                     img_emb = clip_model.get_image_features(**image_inputs)
-                    tokenizer.use_fast = True   
-
                 #I use squeeze to reduce the dimensionality of the tensor, then i save tensor copy in the CPU.
                 #Compatibility with pcs without a GPU
                 img_emb= img_emb.squeeze(0).cpu()
@@ -42,7 +43,7 @@ def create_all_img_embedding(clip_processor, clip_model,device,num_classes, num_
             save_path = f'{class_dir}/embeddings.pt'
             torch.save(class_embeddings, save_path)
 
-            print(f"Saved embeddings for class {i} at {save_path}")
+            #print(f"Saved embeddings for class {i} at {save_path}")
     else:
         print('The Embedding Directory is already create, also the embedding of all image of Dataset.')     
 
@@ -61,12 +62,16 @@ def create_prompt_embedding_for_all(clip_processor, clip_model,model_name ,model
     tokenizer = CLIPTokenizer.from_pretrained(model_name)
     tokenizer.use_fast = True 
     message_prompt = efc.build_message_prompt()
+    # To measure the average time to compute the embedding of a prompt for each model
+    avg_time = [0.0]*len(models)
 
     for i in range(len(models)):
-            for j in range(class_num):
+            efc.setup_model(models[i])
+            time_start = time.time()
+            for j in tqdm(range(class_num),desc=f"Calculating prompt extension and text embeddings for model {models[i]}"):
                 img=efc.choose_class_and_img(j,1)
                 #This is the prompt extension of the class
-                print(img['class name'])
+                #print(img['class name'])
                 caption, t=efc.chat_with_model(img['class name'], models[i], message_prompt)
                 if models[i] == "deepseek-r1:14b":
                     caption = efc.extract_short_long(caption)   
@@ -76,8 +81,10 @@ def create_prompt_embedding_for_all(clip_processor, clip_model,model_name ,model
                     text_emb = clip_model.get_text_features(**text_inputs)                    
                 text_emb = text_emb.squeeze(0).cpu()
                 struct_of_text_embeddings[j][i] = text_emb
-                print(f"Saved embedding for class {j} and model {models[i]}")
-    return struct_of_text_embeddings
+                #print(f"Saved embedding for class {j} and model {models[i]}")
+            time_end = time.time()
+            avg_time[i] = (time_end - time_start) / class_num    
+    return struct_of_text_embeddings, avg_time
 
 
 #-----------------------------------------------------------------------------------------------------------------------

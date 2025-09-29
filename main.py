@@ -142,13 +142,13 @@ if __name__ == '__main__':
 
     #Here didn't see the dataset, so there will be error #TODO: manage the error. 
     a.create_all_img_embedding(clip_processor, clip_model, device, NUM_CLASS, NUM_IMG_4_CLASS, model_name)
-    embeddings_prompt=a.create_prompt_embedding_for_all(clip_processor,clip_model,model_name,models, NUM_CLASS, device)
-
+    embeddings_prompt, avg_time=a.create_prompt_embedding_for_all(clip_processor,clip_model,model_name,models, NUM_CLASS, device)
 
     avg_clipscores=a.analyze(models, NUM_CLASS, embeddings_prompt)
 
     #TODO: try to parallelize the code (facoltative)
     ga.create_clipscore_table(avg_clipscores ,models, NUM_CLASS)
+    ga.grafic_avg_time(models, avg_time)
 
     #TODO: Calculate for all class and do the avg of avg clip score for each model
     #ga.grafic_analysis(models, 10, ITERATIONS, NUM_CLASS, clip_processor, clip_model)
