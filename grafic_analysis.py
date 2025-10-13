@@ -93,7 +93,7 @@ def grafic_analysis( models, num_runs, num_iter, num_classes, clip_processor, cl
 #--------------------------------------------------------------------------------------------------------------
 
 # Function to create a bar graph comparing average CLIP scores across different models for each class
-def create_clipscore_table(avg_clip_scores, models, num_classes):
+def create_clipscore_table(avg_clip_scores, models, num_classes,colors):
             
     wb= Workbook()
     ws= wb.active
@@ -225,10 +225,9 @@ def create_clipscore_table(avg_clip_scores, models, num_classes):
     #         if avg_clip_scores[class_idx][models.index(model)]["avg_score"] < sum_all_avg[models.index(model)]:
     #             num_red_for_model[models.index(model)] += 1
 
-
     # Draw istogram
     plt.figure(figsize=(8,5))
-    plt.bar(models, num_red_for_model, color='red')
+    plt.bar(models, num_red_for_model, color=colors)
     plt.xlabel('Models')
     plt.ylabel('Number of Classes below Threshold')
     plt.title('Classes with avg CLIP Score below Overall Threshold per Model')
@@ -240,23 +239,51 @@ def create_clipscore_table(avg_clip_scores, models, num_classes):
 
 
 # Function to create a bar graph comparing average response times across different models               
-def grafic_avg_time(models,avg_time):
+def grafic_avg_time(models,avg_time,colors):
     plt.figure(figsize=(8,5))
-    plt.bar(models, avg_time, color='blue')
+    plt.bar(models, avg_time, color=colors)
     plt.xlabel('Models')
     plt.ylabel('Average Response Time (s)')
     plt.title('Average Response Time per Model')
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.savefig("avg_response_time.png")
+
     
+def grafic_cumulative_distribution(models, colors):
+    try:
+        df = pd.read_excel("ClipScores.xlsx", header=[0, 1], index_col=0)
+    except FileNotFoundError:
+        print("Errore: File 'ClipScores.xlsx' not find.")
+        return
+    colors = ['blue', 'orange', 'green',  'purple']
+    if not os.path.exists("./CumulativeDistribution"):
+        os.mkdir("./CumulativeDistribution")
+    
+    thresholds = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+    
+
+    for model_name in models:
+        plt.figure(figsize=(12, 7))          
+        data = df[model_name]['avg']
+        cumulative_counts = []
+        for t in thresholds:
+            count = (data <= t).sum()
+            cumulative_counts.append(count)
+        plt.bar(thresholds, cumulative_counts, width=0.08, color=colors[models.index(model_name)], edgecolor='black')
+        plt.title(f"Cumulative Distribution for {model_name}", fontsize=16)
+        plt.xlabel("Threshold", fontsize=12)
+        plt.ylabel("Number of Class with Score <= Threshold", fontsize=12)
+        plt.xticks(thresholds)                     
+        plt.savefig(f"./CumulativeDistribution/CumulativeDistribution_{model_name.replace(':', '_')}.png")
+        plt.close()
+
 
 
 #Function to create a grafic that show the distribution of average clip scores for each model
-def grafic_distribution(models):
+def grafic_distribution(models,colors):
     df= pd.read_excel("ClipScores.xlsx", header=[0,1], index_col=0)
     bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    colors = ['blue', 'orange', 'green',  'purple']
 
     if os.path.exists("./Distributions"):
         pass
@@ -265,7 +292,6 @@ def grafic_distribution(models):
      # Plotting the distribution for each model
     for model in models:
         avg_model=df[model]['avg']
-        print(len(avg_model))
         counts, _ = np.histogram(avg_model, bins=bins)
         plt.figure(figsize=(8,5))
         plt.bar([f"{bins[i]:.1f}-{bins[i+1]:.1f}" for i in range(len(bins)-1)], counts, color=colors[models.index(model)])
