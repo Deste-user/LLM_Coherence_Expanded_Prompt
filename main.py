@@ -56,32 +56,32 @@ def start_ollama():
 if __name__ == '__main__':
     models = ["mistral:latest", "phi3:latest","llama3.2:latest","gemma2:latest"]
 
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # print("I'm using:", device)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("I'm using:", device)
     
-    # # Download the dataset if it not present
-    # download_dataset()
+    # Download the dataset if it not present
+    download_dataset()
 
-    # # Start the ollama server
-    # start_ollama()
+    # Start the ollama server
+    start_ollama()
 
-    # # Load the CLIP model and processor
-    # clip_model = CLIPModel.from_pretrained(model_name)
+    # Load the CLIP model and processor
+    clip_model = CLIPModel.from_pretrained(model_name)
 
-    # #if I use use_fast=True i can't put image to make the embeedings 
-    # clip_processor = CLIPProcessor.from_pretrained(model_name, use_fast=False)
-    # clip_model.to(device)
+    #if I use use_fast=True i can't put image to make the embeedings 
+    clip_processor = CLIPProcessor.from_pretrained(model_name, use_fast=False)
+    clip_model.to(device)
 
-    # a.create_all_img_embedding(clip_processor, clip_model, device, NUM_CLASS, NUM_IMG_4_CLASS, model_name)
-    # embeddings_prompt, avg_time=a.create_prompt_embedding_for_all(clip_processor,clip_model,model_name,models, NUM_CLASS, device)
+    a.create_all_img_embedding(clip_processor, clip_model, device, NUM_CLASS, NUM_IMG_4_CLASS, model_name)
+    embeddings_prompt, avg_time=a.create_prompt_embedding_for_all(clip_processor,clip_model,model_name,models, NUM_CLASS, device)
 
-    # print(embeddings_prompt[0])
+    print(embeddings_prompt[0])
 
-    # avg_clipscores=a.analyze(models, NUM_CLASS, embeddings_prompt)
+    avg_clipscores=a.analyze(models, NUM_CLASS, embeddings_prompt)
 
-    # #TODO: try to parallelize the code (facoltative)
-    # ga.create_clipscore_table(avg_clipscores ,models, NUM_CLASS)
-    # ga.grafic_avg_time(models, avg_time)
+    #TODO: try to parallelize the code (facoltative)
+    ga.create_clipscore_table(avg_clipscores ,models, NUM_CLASS)
+    ga.grafic_avg_time(models, avg_time)
     ga.grafic_distribution(models)
     
     
