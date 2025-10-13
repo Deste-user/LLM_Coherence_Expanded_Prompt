@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt   
 import numpy as np
 import random as rdm
+import pandas as pd
+import os
 from PIL import Image
 import json
 import torch
@@ -15,7 +17,6 @@ import analysis as a
 
 #Review this function
 #This function create a grafic that show the stability of clip scores over iterations
-
 def grafic_analysis( models, num_runs, num_iter, num_classes, clip_processor, clip_model):
     img_class = rdm.randrange(num_classes)
     tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-base-patch16")
@@ -238,7 +239,7 @@ def create_clipscore_table(avg_clip_scores, models, num_classes):
 
 
 
-               
+# Function to create a bar graph comparing average response times across different models               
 def grafic_avg_time(models,avg_time):
     plt.figure(figsize=(8,5))
     plt.bar(models, avg_time, color='blue')
@@ -249,3 +250,28 @@ def grafic_avg_time(models,avg_time):
     plt.tight_layout()
     plt.savefig("avg_response_time.png")
     
+
+
+#Function to create a grafic that show the distribution of average clip scores for each model
+def grafic_distribution(models):
+    df= pd.read_excel("ClipScores.xlsx", header=[0,1], index_col=0)
+    bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    colors = ['blue', 'orange', 'green',  'purple']
+
+    if os.path.exists("./Distributions"):
+        pass
+    else:
+        os.mkdir("./Distributions")
+     # Plotting the distribution for each model
+    for model in models:
+        avg_model=df[model]['avg']
+        print(len(avg_model))
+        counts, _ = np.histogram(avg_model, bins=bins)
+        plt.figure(figsize=(8,5))
+        plt.bar([f"{bins[i]:.1f}-{bins[i+1]:.1f}" for i in range(len(bins)-1)], counts, color=colors[models.index(model)])
+        plt.xlabel('Average CLIP Score Ranges')
+        plt.ylabel('Number of Classes')
+        plt.title(f'Distribution of Average CLIP Scores for {model}')
+        plt.xticks(rotation=45)
+        plt.savefig(f"./Distributions/distribution_{model.replace(':', '_')}.png")
+        counts=0

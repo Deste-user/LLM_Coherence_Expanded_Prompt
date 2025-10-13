@@ -54,36 +54,39 @@ def create_all_img_embedding(clip_processor, clip_model,device,num_classes, num_
 # Function to calculate embeddings of a single class -> put the prompt in the models.
 # So if the class number is 1000 and we have 5 models we have to do 5000 prompt embeddings.        
 
-def create_prompt_embedding_for_all(clip_processor, clip_model,model_name ,models,class_num, device):
+def create_prompt_embedding_for_all(clip_processor, clip_model,model_name ,models,class_num, device,num_prompts=3):
     struct_of_text_embeddings = [
-    [None for _ in range(len(models))] 
+    [[] for _ in range(len(models))] 
     for _ in range(class_num)]  # class_num x num_models
 
     tokenizer = CLIPTokenizer.from_pretrained(model_name)
     tokenizer.use_fast = True 
     message_prompt = efc.build_message_prompt()
     # To measure the average time to compute the embedding of a prompt for each model
-    avg_time = [0.0]*len(models)
+    avg_time = [0.0]*len(models) 
 
     for i in range(len(models)):
             efc.setup_model(models[i])
             time_start = time.time()
             for j in tqdm(range(class_num),desc=f"Calculating prompt extension and text embeddings for model {models[i]}"):
                 img=efc.choose_class_and_img(j,1)
+                captions = []
                 #This is the prompt extension of the class
                 #print(img['class name'])
-                caption, t=efc.chat_with_model(img['class name'], models[i], message_prompt)
-                if models[i] == "deepseek-r1:14b":
-                    caption = efc.extract_short_long(caption)   
-                text_inputs = clip_processor(text=[caption], return_tensors="pt", padding=True, truncation=True, max_length=77)
+                for _ in range(num_prompts):  # different captions for each class
+                    caption, t=efc.chat_with_model(img['class name'], models[i], message_prompt)
+                    if models[i] == "deepseek-r1:14b":
+                        caption = efc.extract_short_long(caption)
+                    captions.append(caption)       
+                text_inputs = clip_processor(text=captions, return_tensors="pt", padding=True, truncation=True, max_length=77)
                 text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
                 with torch.no_grad():
-                    text_emb = clip_model.get_text_features(**text_inputs)                    
-                text_emb = text_emb.squeeze(0).cpu()
-                struct_of_text_embeddings[j][i] = text_emb
-                #print(f"Saved embedding for class {j} and model {models[i]}")
+                    text_embs = clip_model.get_text_features(**text_inputs)                    
+                for emb in text_embs:
+                    struct_of_text_embeddings[j][i].append(emb.cpu())
+                    #print(f"Saved embedding for class {j} and model {models[i]}")
             time_end = time.time()
-            avg_time[i] = (time_end - time_start) / class_num    
+            avg_time[i] = (time_end - time_start) / (class_num*num_prompts)    
     return struct_of_text_embeddings, avg_time
 
 
@@ -101,10 +104,13 @@ def calculate_clip_score(embedding_text, models, embeddings_image ):
         "deviation": 0.0  # la deviazione standard
     }
     for j in range(len(models))]
-
+    
     for emb_img in embeddings_image:
         for i in range(len(models)):
-            score = clip_score(emb_img, embedding_text[i])
+            score = 0.0
+            for k in range(len(embedding_text[i])):
+                score += clip_score(emb_img, embedding_text[i][k])
+            score /= len(embedding_text[i])      
             average_clip_scores[i]["scores"].append(score)
 
     # Calculate average scores
@@ -119,7 +125,7 @@ def calculate_clip_score(embedding_text, models, embeddings_image ):
 
 
 
-
+# Calculate the clip score between one image embedding and one text embedding
 def clip_score(emb_img, emb_text, w=2.5):
     # Normalize embeddings
     img_emb = emb_img / emb_img.norm()
@@ -127,7 +133,9 @@ def clip_score(emb_img, emb_text, w=2.5):
 
     # Cosine similarity
     cosine_sim = torch.dot(img_emb, text_emb).item()
-
+    
+    #if the cosine similarity is negative we clip it to 0
+    #We don't want to penalize the score if the cosine similarity is negative
     score = w * max(cosine_sim, 0.0)
     return score
 
