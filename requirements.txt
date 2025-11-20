@@ -3,3 +3,7 @@ torchvision
 pillow
 transformers
 requests
+pandas
+openpyxl
+matplotlib
+numpy
