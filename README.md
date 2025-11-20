@@ -2,13 +2,13 @@
 
 A comparative study of Large Language Models (LLMs) for automatic prompt expansion, evaluated using CLIP Score as a semantic coherence metric.
 
-## 📋 Overview
+## Overview
 
 This project evaluates and compares four state-of-the-art open-source LLMs (Mistral, Phi3, Llama3.2, and Gemma2) in their ability to expand simple class names into detailed, semantically coherent descriptions suitable for text-to-image generation systems like Stable Diffusion.
 
 The evaluation is performed on 1,000 ImageNet classes using CLIP Score as a proxy metric for text-image semantic alignment.
 
-## 🎯 Key Features
+## Key Features
 
 - **Automated Prompt Expansion**: Generates detailed descriptions from simple class names
 - **Quantitative Evaluation**: Uses CLIP Score to measure semantic coherence
@@ -16,7 +16,7 @@ The evaluation is performed on 1,000 ImageNet classes using CLIP Score as a prox
 - **Performance Metrics**: Evaluates both quality (CLIP Score) and speed (response time)
 - **Rich Visualizations**: Generates distributions, cumulative plots, and Excel reports
 
-## 🚀 Quick Start
+## Quick Start
 ### Installation
 
 ```bash
@@ -40,7 +40,7 @@ The script will:
 6. Calculate CLIP Scores
 7. Generate visualizations and Excel reports
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 .
@@ -60,7 +60,7 @@ The script will:
 └── CumulativeDistribution/  # Cumulative distribution plots
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Models Tested
 
@@ -81,9 +81,7 @@ num_prompts = 3            # Expansions per class per model
 max_length = 77            # CLIP token limit
 ```
 
-## 📖 Methodology
-
-### 1. Prompt Engineering
+## Methodology
 
 The system uses few-shot learning with 13 carefully crafted examples to guide LLMs in generating realistic, detailed descriptions:
 
@@ -94,7 +92,7 @@ flowing maxi dress with colorful patterns and fringe, a sunset or nature
 scene, green and gold color scheme"
 ```
 
-## 📈 Visualizations
+## Visualizations
 
 The project generates:
 
@@ -103,3 +101,4 @@ The project generates:
 - **Response Time Bar Chart**: Average time per model
 - **Threshold Analysis**: Classes below global average
 - **Excel Report**: Detailed scores with conditional formatting
+
