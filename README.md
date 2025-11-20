@@ -54,8 +54,6 @@ The script will:
 ├── Relazione Progetto/           # It contains all sources of the Report LaTeX and the pdf
 ├── Presentazione - Valutazione della Coerenza Semantica tramite ClipScore.pdf #Presentation pdf
 │
-│
-│
 ├── Small-ImageNet-Validation-Dataset-1000-Classes/  # Dataset (auto-downloaded)
 ├── images_embedding/            # Cached image embeddings
 ├── ClipScores.xlsx          # Detailed score table
@@ -106,5 +104,6 @@ The project generates:
 - **Response Time Bar Chart**: Average time per model
 - **Threshold Analysis**: Classes below global average
 - **Excel Report**: Detailed scores with conditional formatting
+
 
 
